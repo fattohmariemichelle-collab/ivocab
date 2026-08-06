@@ -27,6 +27,13 @@ if (!source.includes(currentMagicLink)) {
 }
 source = source.replace(currentMagicLink, replacementMagicLink);
 
+const currentCallbackWait = `  await page.waitForURL((url) => url.origin === new URL(BASE_URL).origin && url.pathname.startsWith("/crm"), { timeout: 60_000 });`;
+const replacementCallbackWait = `  await page.waitForURL((url) => url.origin === new URL(BASE_URL).origin && url.pathname === "/crm", { timeout: 60_000 });`;
+if (!source.includes(currentCallbackWait)) {
+  throw new Error("The expected CRM callback wait was not found.");
+}
+source = source.replace(currentCallbackWait, replacementCallbackWait);
+
 const currentReadiness = `  await expect(page.locator("body")).not.toContainText(/Sign in|Incorrect email or password/i, { timeout: 30_000 });
   await expect(page.getByText(/Leads/i).first()).toBeVisible({ timeout: 30_000 });
   return { context, page, diagnostics };`;
@@ -87,4 +94,4 @@ if (!source.includes(currentAccounts)) {
 }
 source = source.replace(currentAccounts, replacementAccounts);
 writeFileSync(path, source, "utf8");
-console.log("Playwright uses the official CRM OTP callback, exact seven-account matrix and authenticated-shell diagnostics.");
+console.log("Playwright waits for the completed OTP callback, then tests the exact seven-account matrix.");
