@@ -1,0 +1,9 @@
+{
+  "name": "nwa-crm-e2e-runner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "1.62.0"
+  }
+}
