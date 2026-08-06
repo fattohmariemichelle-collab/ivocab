@@ -1,0 +1,17 @@
+name: Public Actions Probe
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm runner starts
+        run: |
+          echo "public runner started"
+          node --version
