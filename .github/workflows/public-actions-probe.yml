@@ -27,6 +27,9 @@ jobs:
       - name: Install test dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Prepare the exact seven-account matrix
+        run: node prepare-test.mjs
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
