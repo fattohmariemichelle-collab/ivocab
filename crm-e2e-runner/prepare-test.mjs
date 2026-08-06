@@ -3,7 +3,31 @@ import { readFileSync, writeFileSync } from "node:fs";
 const path = "tests/nwa-crm.spec.ts";
 let source = readFileSync(path, "utf8");
 
-const current = `    const admin = activeAccounts.find((account) => account.role === "super_admin") || activeAccounts.find((account) => account.role === "admin");
+const currentMagicLink = `async function magicLink(request: APIRequestContext, email: string) {
+  const payload = await e2eApi(request, "magic-link", { email });
+  if (!payload.actionLink) throw new Error(\`No test session link was generated for \${email}.\`);
+  return String(payload.actionLink);
+}`;
+
+const replacementMagicLink = `async function magicLink(request: APIRequestContext, email: string) {
+  const response = await request.post(\`\${BASE_URL}/api/crm/e2e/session\`, {
+    headers: { Authorization: \`Bearer \${await githubOidcToken()}\` },
+    data: { email },
+    timeout: 60_000,
+  });
+  const payload = await response.json().catch(() => ({})) as Record<string, any>;
+  if (!response.ok() || !payload.callbackUrl) {
+    throw new Error(payload.error || \`No test session callback was generated for \${email}.\`);
+  }
+  return String(payload.callbackUrl);
+}`;
+
+if (!source.includes(currentMagicLink)) {
+  throw new Error("The expected magic-link helper was not found in the Playwright test.");
+}
+source = source.replace(currentMagicLink, replacementMagicLink);
+
+const currentAccounts = `    const admin = activeAccounts.find((account) => account.role === "super_admin") || activeAccounts.find((account) => account.role === "admin");
     expect(admin, "An active main/admin CRM account is required.").toBeTruthy();
     const closers = activeAccounts.filter((account) => account.role === "closer");
     expect(closers.length, "Exactly seven active closer spaces must be tested.").toBe(7);
@@ -11,7 +35,7 @@ const current = `    const admin = activeAccounts.find((account) => account.role
     expect(michael, "Michael's CRM profile was not identified uniquely.").toBeTruthy();
     const accounts = [admin!, ...closers];`;
 
-const replacement = `    const adminCandidates = activeAccounts.filter((account) => account.role === "super_admin" || account.role === "admin");
+const replacementAccounts = `    const adminCandidates = activeAccounts.filter((account) => account.role === "super_admin" || account.role === "admin");
     const admin = adminCandidates.find((account) => account.email.trim().toLowerCase() === "fattohmariemichelle@gmail.com")
       || adminCandidates.find((account) => account.role === "super_admin")
       || adminCandidates[0];
@@ -40,9 +64,9 @@ const replacement = `    const adminCandidates = activeAccounts.filter((account)
     expect(michael, "Michael's CRM profile was not identified uniquely.").toBeTruthy();
     const accounts = [admin!, ...closers];`;
 
-if (!source.includes(current)) {
+if (!source.includes(currentAccounts)) {
   throw new Error("The expected closer selection block was not found in the Playwright test.");
 }
-source = source.replace(current, replacement);
+source = source.replace(currentAccounts, replacementAccounts);
 writeFileSync(path, source, "utf8");
-console.log("Playwright matrix restricted to the seven explicitly requested closer identities.");
+console.log("Playwright uses the official CRM OTP callback and the seven explicitly requested closer identities.");
