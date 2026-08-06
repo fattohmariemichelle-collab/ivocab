@@ -27,6 +27,24 @@ if (!source.includes(currentMagicLink)) {
 }
 source = source.replace(currentMagicLink, replacementMagicLink);
 
+const currentReadiness = `  await expect(page.locator("body")).not.toContainText(/Sign in|Incorrect email or password/i, { timeout: 30_000 });
+  await expect(page.getByText(/Leads/i).first()).toBeVisible({ timeout: 30_000 });
+  return { context, page, diagnostics };`;
+
+const replacementReadiness = `  await expect(page.locator("body")).not.toContainText(/Sign in|Incorrect email or password/i, { timeout: 30_000 });
+  try {
+    await expect(page.getByText(/Leads/i).first()).toBeVisible({ timeout: 30_000 });
+  } catch {
+    const bodyText = (await page.locator("body").innerText()).replace(/\\s+/g, " ").slice(0, 1200);
+    throw new Error(\`Authenticated CRM shell did not render Leads for \${account.email}. URL: \${page.url()}. Body: \${bodyText}\`);
+  }
+  return { context, page, diagnostics };`;
+
+if (!source.includes(currentReadiness)) {
+  throw new Error("The expected authenticated CRM readiness block was not found.");
+}
+source = source.replace(currentReadiness, replacementReadiness);
+
 const currentAccounts = `    const admin = activeAccounts.find((account) => account.role === "super_admin") || activeAccounts.find((account) => account.role === "admin");
     expect(admin, "An active main/admin CRM account is required.").toBeTruthy();
     const closers = activeAccounts.filter((account) => account.role === "closer");
@@ -69,4 +87,4 @@ if (!source.includes(currentAccounts)) {
 }
 source = source.replace(currentAccounts, replacementAccounts);
 writeFileSync(path, source, "utf8");
-console.log("Playwright uses the official CRM OTP callback and the seven explicitly requested closer identities.");
+console.log("Playwright uses the official CRM OTP callback, exact seven-account matrix and authenticated-shell diagnostics.");
