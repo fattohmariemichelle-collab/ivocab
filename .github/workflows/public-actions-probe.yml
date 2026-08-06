@@ -1,0 +1,40 @@
+name: NWA CRM Playwright E2E
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: crm-e2e-runner
+    steps:
+      - name: Checkout public runner
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install test dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Prepare the exact seven-account matrix
+        run: node prepare-test.mjs
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the complete CRM verification
+        env:
+          CI: "1"
+          CRM_E2E_BASE_URL: https://nwa-agentos.vercel.app
+        run: npx playwright test --project=desktop-chromium
