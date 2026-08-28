@@ -24,19 +24,21 @@ jobs:
           curl -L --retry 3 --fail 'https://www.kaggle.com/api/v1/datasets/download/tgtanalytics/nq-futures-1min-bar-2022-2025' -o data_v8/nq.zip
           unzip -o data_v8/nq.zip -d data_v8
           test -f data_v8/Dataset_NQ_1min_2022_2025.csv
-      - name: Run V8d direction engine
+      - name: Run V8d row-level diagnostic
         shell: bash
-        run: |
-          set -o pipefail
-          rm -rf trend_backtest_v8d_results trend_backtest_v8d_stdout.txt
-          python tmp_backtests/nq_trend_detector_v8d_direction.py | tee trend_backtest_v8d_stdout.txt
+        run: python tmp_backtests/nq_trend_detector_v8d_direction.py | tee trend_backtest_v8d_stdout.txt
+      - name: Run V8d2 non-overlap audit
+        shell: bash
+        run: python tmp_backtests/nq_trend_detector_v8d2_event_audit.py | tee trend_backtest_v8d2_stdout.txt
       - name: Upload V8d results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nq-direction-engine-v8d-results
+          name: nq-direction-engine-v8d2-results
           path: |
             trend_backtest_v8d_results/
+            trend_backtest_v8d2_results/
             trend_backtest_v8d_stdout.txt
+            trend_backtest_v8d2_stdout.txt
           if-no-files-found: error
           retention-days: 7
