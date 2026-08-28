@@ -6,9 +6,9 @@ on:
 permissions:
   contents: read
 jobs:
-  v13:
+  v13c:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,44 +27,26 @@ jobs:
           done
           curl -L --retry 3 --fail 'https://raw.githubusercontent.com/axb0306/cme-futures-ohlc/main/NQ/NQ_1min_20260120_20260415.csv' -o data_v13/topstep_NQ.csv
           curl -L --retry 3 --fail 'https://raw.githubusercontent.com/axb0306/cme-futures-ohlc/main/MNQ/MNQ_1min_20260120_20260415.csv' -o data_v13/topstep_MNQ.csv
-          test -f data_v13/Dataset_NQ_1min_2022_2025.csv
-          test -s data_v13/EV_NQ_2026.json.gz
-          test -s data_v13/topstep_NQ.csv
-      - name: Run accelerated V13
+      - name: Run V13c neighborhood audit
         shell: bash
         run: |
           set -o pipefail
-          rm -rf v13_results v13_stdout.txt
-          python tmp_backtests/nq_v13_fast_runner.py \
+          rm -rf v13c_results v13c_stdout.txt
+          python tmp_backtests/nq_v13c_orb_neighborhood.py \
             --primary data_v13/Dataset_NQ_1min_2022_2025.csv \
             --ev2024 data_v13/EV_NQ_2024.json.gz \
             --ev2025 data_v13/EV_NQ_2025.json.gz \
             --ev2026 data_v13/EV_NQ_2026.json.gz \
             --topstep-nq data_v13/topstep_NQ.csv \
             --topstep-mnq data_v13/topstep_MNQ.csv \
-            --out v13_results | tee v13_stdout.txt
-      - name: Run targeted V13b ORB audit
-        shell: bash
-        run: |
-          set -o pipefail
-          rm -rf v13b_results v13b_stdout.txt
-          python tmp_backtests/nq_v13b_public_orb_audit.py \
-            --primary data_v13/Dataset_NQ_1min_2022_2025.csv \
-            --ev2024 data_v13/EV_NQ_2024.json.gz \
-            --ev2025 data_v13/EV_NQ_2025.json.gz \
-            --ev2026 data_v13/EV_NQ_2026.json.gz \
-            --topstep-nq data_v13/topstep_NQ.csv \
-            --topstep-mnq data_v13/topstep_MNQ.csv \
-            --out v13b_results | tee v13b_stdout.txt
-      - name: Upload V13 results
+            --out v13c_results | tee v13c_stdout.txt
+      - name: Upload V13c results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nq-v13-profitability-results
+          name: nq-v13c-neighborhood-results
           path: |
-            v13_results/
-            v13_stdout.txt
-            v13b_results/
-            v13b_stdout.txt
+            v13c_results/
+            v13c_stdout.txt
           if-no-files-found: error
           retention-days: 7
