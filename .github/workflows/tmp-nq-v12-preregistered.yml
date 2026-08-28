@@ -1,0 +1,87 @@
+name: Preregistered NQ V12 pattern discovery
+on:
+  push:
+    branches: [tmp-nq-v12-preregistered-20260828]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check pandas numpy
+      - name: Download internal research dataset only
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p data_v12
+          curl -L --retry 3 --fail 'https://www.kaggle.com/api/v1/datasets/download/tgtanalytics/nq-futures-1min-bar-2022-2025' -o data_v12/primary.zip
+          unzip -o data_v12/primary.zip -d data_v12
+          test -f data_v12/Dataset_NQ_1min_2022_2025.csv
+      - name: Discover and freeze rules
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf v12_discovery
+          python tmp_backtests/nq_v12_preregistered_patterns.py discover \
+            --primary data_v12/Dataset_NQ_1min_2022_2025.csv \
+            --out v12_discovery | tee v12_discovery_stdout.txt
+      - name: Upload frozen rules
+        uses: actions/upload-artifact@v4
+        with:
+          name: v12-frozen-spec
+          path: |
+            v12_discovery/
+            v12_discovery_stdout.txt
+          if-no-files-found: error
+          retention-days: 7
+
+  holdout:
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check pandas numpy
+      - name: Download frozen rules from discovery job
+        uses: actions/download-artifact@v4
+        with:
+          name: v12-frozen-spec
+          path: frozen
+      - name: Download untouched 2026 TopstepX holdout only after freeze
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p data_v12_holdout
+          curl -L --retry 3 --fail \
+            'https://raw.githubusercontent.com/axb0306/cme-futures-ohlc/main/NQ/NQ_1min_20260120_20260415.csv' \
+            -o data_v12_holdout/NQ_1min_20260120_20260415.csv
+          test -s data_v12_holdout/NQ_1min_20260120_20260415.csv
+      - name: Evaluate frozen engine once on 2026
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf v12_holdout
+          python tmp_backtests/nq_v12_preregistered_patterns.py evaluate \
+            --holdout data_v12_holdout/NQ_1min_20260120_20260415.csv \
+            --spec frozen/v12_discovery/v12_frozen_spec.json \
+            --out v12_holdout | tee v12_holdout_stdout.txt
+      - name: Upload complete V12 result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nq-v12-preregistered-results
+          path: |
+            frozen/
+            v12_holdout/
+            v12_holdout_stdout.txt
+          if-no-files-found: error
+          retention-days: 7
