@@ -1,4 +1,4 @@
-name: Temporary NQ direction engine V8d
+name: Temporary NQ V9 entry engine
 on:
   push:
     branches: [tmp-v8d-only-20260828]
@@ -6,9 +6,9 @@ on:
 permissions:
   contents: read
 jobs:
-  v8d:
+  v9:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,23 +22,20 @@ jobs:
           mkdir -p data_v8
           curl -L --retry 3 --fail 'https://www.kaggle.com/api/v1/datasets/download/tgtanalytics/nq-futures-1min-bar-2022-2025' -o data_v8/nq.zip
           unzip -o data_v8/nq.zip -d data_v8
-      - name: Run V8d row diagnostic
-        run: python tmp_backtests/nq_trend_detector_v8d_direction.py > trend_backtest_v8d_stdout.txt
-      - name: Run V8d2 event audit
-        run: python tmp_backtests/nq_trend_detector_v8d2_event_audit.py > trend_backtest_v8d2_stdout.txt
-      - name: Run V8d3 combined audit
-        run: python tmp_backtests/nq_trend_detector_v8d3_combined_audit.py | tee trend_backtest_v8d3_stdout.txt
-      - name: Upload V8d results
+          test -f data_v8/Dataset_NQ_1min_2022_2025.csv
+      - name: Run V9 entry engine
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf trend_backtest_v9_results trend_backtest_v9_stdout.txt
+          python tmp_backtests/nq_trend_detector_v9_entry_engine.py | tee trend_backtest_v9_stdout.txt
+      - name: Upload V9 results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nq-direction-engine-v8d3-results
+          name: nq-entry-engine-v9-results
           path: |
-            trend_backtest_v8d_results/
-            trend_backtest_v8d2_results/
-            trend_backtest_v8d3_results/
-            trend_backtest_v8d_stdout.txt
-            trend_backtest_v8d2_stdout.txt
-            trend_backtest_v8d3_stdout.txt
+            trend_backtest_v9_results/
+            trend_backtest_v9_stdout.txt
           if-no-files-found: error
           retention-days: 7
