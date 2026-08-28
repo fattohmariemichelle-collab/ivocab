@@ -1,0 +1,23 @@
+name: Inspect EV data endpoint after V12b preregistration
+on:
+  push:
+    branches: [tmp-nq-v12-preregistered-20260828]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Inspect public page and JS bundles
+        run: python tmp_backtests/inspect_ev_data_endpoint.py | tee ev_endpoint_inspection.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ev-endpoint-inspection
+          path: ev_endpoint_inspection.txt
+          retention-days: 7
