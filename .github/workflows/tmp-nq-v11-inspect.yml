@@ -1,4 +1,4 @@
-name: Temporary NQ V11 robustness audit
+name: Temporary NQ V11b robustness audit
 on:
   push:
     branches: [tmp-nq-v11-robustness-20260828]
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 jobs:
-  v11:
+  v11b:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -15,30 +15,27 @@ jobs:
         with: {python-version: '3.12'}
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check pandas numpy scikit-learn
-      - name: Download primary and secondary public NQ datasets
+      - name: Download primary public NQ dataset
         shell: bash
         run: |
           set -euxo pipefail
-          mkdir -p data_v8 data_v11_secondary
+          mkdir -p data_v8
           curl -L --retry 3 --fail 'https://www.kaggle.com/api/v1/datasets/download/tgtanalytics/nq-futures-1min-bar-2022-2025' -o data_v8/nq.zip
           unzip -o data_v8/nq.zip -d data_v8
           test -f data_v8/Dataset_NQ_1min_2022_2025.csv
-          curl -L --retry 3 --fail 'https://www.kaggle.com/api/v1/datasets/download/youneseloiarm/nasdaq-cme-future-nq' -o data_v11_secondary/nq2.zip
-          unzip -o data_v11_secondary/nq2.zip -d data_v11_secondary
-          test -f data_v11_secondary/NQ_in_1_minute.csv
-      - name: Run V11 audit
+      - name: Run V11b audit
         shell: bash
         run: |
           set -o pipefail
-          rm -rf trend_backtest_v11_results trend_backtest_v11_stdout.txt
-          python tmp_backtests/nq_v11_runner.py | tee trend_backtest_v11_stdout.txt
-      - name: Upload V11 results
+          rm -rf trend_backtest_v11b_results trend_backtest_v11b_stdout.txt
+          python tmp_backtests/nq_v11b_event_sampling.py | tee trend_backtest_v11b_stdout.txt
+      - name: Upload V11b results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nq-robustness-audit-v11-results
+          name: nq-robustness-audit-v11b-results
           path: |
-            trend_backtest_v11_results/
-            trend_backtest_v11_stdout.txt
+            trend_backtest_v11b_results/
+            trend_backtest_v11b_stdout.txt
           if-no-files-found: error
           retention-days: 7
