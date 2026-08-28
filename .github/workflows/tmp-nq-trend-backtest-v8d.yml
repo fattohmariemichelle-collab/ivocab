@@ -1,7 +1,7 @@
 name: Temporary NQ direction engine V8d
 on:
   push:
-    branches: [tmp-nq-trend-backtest-20260827]
+    branches: [tmp-v8d-only-20260828]
   workflow_dispatch:
 permissions:
   contents: read
