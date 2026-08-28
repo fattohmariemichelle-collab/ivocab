@@ -1,0 +1,35 @@
+name: Temporary NQ V11 secondary dataset inspection
+on:
+  push:
+    branches: [tmp-nq-v11-robustness-20260828]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install pandas
+        run: python -m pip install --disable-pip-version-check pandas
+      - name: Download independent public NQ dataset
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p data_v11_secondary
+          curl -L --retry 3 --fail 'https://www.kaggle.com/api/v1/datasets/download/youneseloiarm/nasdaq-cme-future-nq' -o data_v11_secondary/nq2.zip
+          unzip -o data_v11_secondary/nq2.zip -d data_v11_secondary
+          find data_v11_secondary -maxdepth 3 -type f -printf '%p %s bytes\n' | sort
+      - name: Inspect schemas
+        run: python tmp_backtests/nq_v11_inspect_secondary.py | tee v11_secondary_inspection_stdout.txt
+      - name: Upload inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: nq-v11-secondary-inspection
+          path: |
+            v11_secondary_inspection.json
+            v11_secondary_inspection_stdout.txt
+          retention-days: 7
