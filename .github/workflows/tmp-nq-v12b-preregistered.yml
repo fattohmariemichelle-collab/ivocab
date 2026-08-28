@@ -1,0 +1,90 @@
+name: Preregistered NQ V12b first-passage study
+on:
+  push:
+    branches: [tmp-nq-v12-preregistered-20260828]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check pandas numpy
+      - name: Download internal research data only
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p data_v12b
+          curl -L --retry 3 --fail 'https://www.kaggle.com/api/v1/datasets/download/tgtanalytics/nq-futures-1min-bar-2022-2025' -o data_v12b/primary.zip
+          unzip -o data_v12b/primary.zip -d data_v12b
+          test -f data_v12b/Dataset_NQ_1min_2022_2025.csv
+      - name: Discover and freeze first-passage rules
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf v12b_discovery
+          python tmp_backtests/nq_v12b_first_passage.py discover \
+            --primary data_v12b/Dataset_NQ_1min_2022_2025.csv \
+            --out v12b_discovery | tee v12b_discovery_stdout.txt
+      - name: Upload frozen V12b rules
+        uses: actions/upload-artifact@v4
+        with:
+          name: v12b-frozen-spec
+          path: |
+            v12b_discovery/
+            v12b_discovery_stdout.txt
+            tmp_backtests/V12B_PREREGISTRATION.md
+          if-no-files-found: error
+          retention-days: 7
+
+  fresh-holdout:
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check pandas numpy
+      - name: Download frozen rules
+        uses: actions/download-artifact@v4
+        with:
+          name: v12b-frozen-spec
+          path: frozen
+      - name: Download fresh independent 2026 NQ proxy only after freeze
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p data_v12b_fresh
+          curl -L --retry 3 --fail \
+            -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36' \
+            'https://evtradelabs.com/api/simulator/data/NQ/2026.json.gz' \
+            -o data_v12b_fresh/NQ_2026.json.gz
+          test -s data_v12b_fresh/NQ_2026.json.gz
+      - name: Evaluate frozen rules on sessions from 16 April 2026 onward
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf v12b_fresh_result
+          python tmp_backtests/nq_v12b_first_passage.py evaluate \
+            --ev data_v12b_fresh/NQ_2026.json.gz \
+            --spec frozen/v12b_discovery/v12b_frozen_spec.json \
+            --out v12b_fresh_result | tee v12b_fresh_stdout.txt
+      - name: Upload complete V12b result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nq-v12b-preregistered-results
+          path: |
+            frozen/
+            v12b_fresh_result/
+            v12b_fresh_stdout.txt
+            tmp_backtests/V12B_PREREGISTRATION.md
+          if-no-files-found: error
+          retention-days: 7
