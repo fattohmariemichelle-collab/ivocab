@@ -43,6 +43,19 @@ jobs:
             --topstep-nq data_v13/topstep_NQ.csv \
             --topstep-mnq data_v13/topstep_MNQ.csv \
             --out v13_results | tee v13_stdout.txt
+      - name: Run targeted V13b ORB audit
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf v13b_results v13b_stdout.txt
+          python tmp_backtests/nq_v13b_public_orb_audit.py \
+            --primary data_v13/Dataset_NQ_1min_2022_2025.csv \
+            --ev2024 data_v13/EV_NQ_2024.json.gz \
+            --ev2025 data_v13/EV_NQ_2025.json.gz \
+            --ev2026 data_v13/EV_NQ_2026.json.gz \
+            --topstep-nq data_v13/topstep_NQ.csv \
+            --topstep-mnq data_v13/topstep_MNQ.csv \
+            --out v13b_results | tee v13b_stdout.txt
       - name: Upload V13 results
         if: always()
         uses: actions/upload-artifact@v4
@@ -51,5 +64,7 @@ jobs:
           path: |
             v13_results/
             v13_stdout.txt
+            v13b_results/
+            v13b_stdout.txt
           if-no-files-found: error
           retention-days: 7
