@@ -1,4 +1,4 @@
-name: Temporary NQ V9 entry engine
+name: Temporary NQ V10 risk and exit engine
 on:
   push:
     branches: [tmp-v8d-only-20260828]
@@ -6,9 +6,9 @@ on:
 permissions:
   contents: read
 jobs:
-  v9:
+  v10:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,19 +23,19 @@ jobs:
           curl -L --retry 3 --fail 'https://www.kaggle.com/api/v1/datasets/download/tgtanalytics/nq-futures-1min-bar-2022-2025' -o data_v8/nq.zip
           unzip -o data_v8/nq.zip -d data_v8
           test -f data_v8/Dataset_NQ_1min_2022_2025.csv
-      - name: Run V9 entry engine
+      - name: Run V10 risk and exit engine
         shell: bash
         run: |
           set -o pipefail
-          rm -rf trend_backtest_v9_results trend_backtest_v9_stdout.txt
-          python tmp_backtests/nq_trend_detector_v9_entry_engine.py | tee trend_backtest_v9_stdout.txt
-      - name: Upload V9 results
+          rm -rf trend_backtest_v10_results trend_backtest_v10_stdout.txt
+          python tmp_backtests/nq_trend_detector_v10_risk_exit.py | tee trend_backtest_v10_stdout.txt
+      - name: Upload V10 results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nq-entry-engine-v9-results
+          name: nq-risk-exit-engine-v10-results
           path: |
-            trend_backtest_v9_results/
-            trend_backtest_v9_stdout.txt
+            trend_backtest_v10_results/
+            trend_backtest_v10_stdout.txt
           if-no-files-found: error
           retention-days: 7
