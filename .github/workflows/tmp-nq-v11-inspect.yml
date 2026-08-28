@@ -31,7 +31,7 @@ jobs:
         run: |
           set -o pipefail
           rm -rf trend_backtest_v11_results trend_backtest_v11_stdout.txt
-          python tmp_backtests/nq_trend_detector_v11_robustness.py | tee trend_backtest_v11_stdout.txt
+          python tmp_backtests/nq_v11_runner.py | tee trend_backtest_v11_stdout.txt
       - name: Upload V11 results
         if: always()
         uses: actions/upload-artifact@v4
