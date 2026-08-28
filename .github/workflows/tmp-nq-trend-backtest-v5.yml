@@ -1,0 +1,44 @@
+name: Temporary NQ trend detector backtest v5
+
+on:
+  push:
+    branches:
+      - tmp-nq-trend-backtest-20260827
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backtest-v5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check pandas numpy scipy
+
+      - name: Run trend-state and independent-short validation
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf trend_backtest_v5_results trend_backtest_v5_stdout.txt
+          python tmp_backtests/nq_trend_detector_v5.py | tee trend_backtest_v5_stdout.txt
+
+      - name: Upload detailed V5 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nq-trend-backtest-v5-results
+          path: |
+            trend_backtest_v5_results/
+            trend_backtest_v5_stdout.txt
+          if-no-files-found: error
+          retention-days: 7
