@@ -8,7 +8,7 @@ permissions:
 jobs:
   v13:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,12 +30,12 @@ jobs:
           test -f data_v13/Dataset_NQ_1min_2022_2025.csv
           test -s data_v13/EV_NQ_2026.json.gz
           test -s data_v13/topstep_NQ.csv
-      - name: Run V13
+      - name: Run accelerated V13
         shell: bash
         run: |
           set -o pipefail
           rm -rf v13_results v13_stdout.txt
-          python tmp_backtests/nq_v13_profitability_search.py \
+          python tmp_backtests/nq_v13_fast_runner.py \
             --primary data_v13/Dataset_NQ_1min_2022_2025.csv \
             --ev2024 data_v13/EV_NQ_2024.json.gz \
             --ev2025 data_v13/EV_NQ_2025.json.gz \
