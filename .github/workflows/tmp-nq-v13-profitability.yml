@@ -1,0 +1,55 @@
+name: Temporary NQ V13 profitability search
+on:
+  push:
+    branches: [tmp-nq-v13-profitability-20260829]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  v13:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check pandas numpy
+      - name: Download research datasets
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p data_v13
+          curl -L --retry 3 --fail 'https://www.kaggle.com/api/v1/datasets/download/tgtanalytics/nq-futures-1min-bar-2022-2025' -o data_v13/primary.zip
+          unzip -o data_v13/primary.zip -d data_v13
+          for y in 2024 2025 2026; do
+            curl -L --retry 3 --fail -A 'Mozilla/5.0' "https://evtradelabs.com/api/simulator/data/NQ/${y}.json.gz" -o "data_v13/EV_NQ_${y}.json.gz"
+          done
+          curl -L --retry 3 --fail 'https://raw.githubusercontent.com/axb0306/cme-futures-ohlc/main/NQ/NQ_1min_20260120_20260415.csv' -o data_v13/topstep_NQ.csv
+          curl -L --retry 3 --fail 'https://raw.githubusercontent.com/axb0306/cme-futures-ohlc/main/MNQ/MNQ_1min_20260120_20260415.csv' -o data_v13/topstep_MNQ.csv
+          test -f data_v13/Dataset_NQ_1min_2022_2025.csv
+          test -s data_v13/EV_NQ_2026.json.gz
+          test -s data_v13/topstep_NQ.csv
+      - name: Run V13
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf v13_results v13_stdout.txt
+          python tmp_backtests/nq_v13_profitability_search.py \
+            --primary data_v13/Dataset_NQ_1min_2022_2025.csv \
+            --ev2024 data_v13/EV_NQ_2024.json.gz \
+            --ev2025 data_v13/EV_NQ_2025.json.gz \
+            --ev2026 data_v13/EV_NQ_2026.json.gz \
+            --topstep-nq data_v13/topstep_NQ.csv \
+            --topstep-mnq data_v13/topstep_MNQ.csv \
+            --out v13_results | tee v13_stdout.txt
+      - name: Upload V13 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nq-v13-profitability-results
+          path: |
+            v13_results/
+            v13_stdout.txt
+          if-no-files-found: error
+          retention-days: 7
