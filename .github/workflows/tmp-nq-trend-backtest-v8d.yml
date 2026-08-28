@@ -1,0 +1,42 @@
+name: Temporary NQ direction engine V8d
+on:
+  push:
+    branches: [tmp-nq-trend-backtest-20260827]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  v8d:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check pandas numpy scikit-learn
+      - name: Download public NQ dataset
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p data_v8
+          curl -L --retry 3 --fail 'https://www.kaggle.com/api/v1/datasets/download/tgtanalytics/nq-futures-1min-bar-2022-2025' -o data_v8/nq.zip
+          unzip -o data_v8/nq.zip -d data_v8
+          test -f data_v8/Dataset_NQ_1min_2022_2025.csv
+      - name: Run V8d direction engine
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf trend_backtest_v8d_results trend_backtest_v8d_stdout.txt
+          python tmp_backtests/nq_trend_detector_v8d_direction.py | tee trend_backtest_v8d_stdout.txt
+      - name: Upload V8d results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nq-direction-engine-v8d-results
+          path: |
+            trend_backtest_v8d_results/
+            trend_backtest_v8d_stdout.txt
+          if-no-files-found: error
+          retention-days: 7
